@@ -1,0 +1,65 @@
+package main
+
+import (
+	"strings"
+	"time"
+)
+
+func Filter[T any](in <-chan T, filterFunctions ...func(T) bool) <-chan T {
+	out := make(chan T, cap(in))
+	go func() {
+		defer close(out)
+	ElementLoop:
+		for element := range in {
+			for _, want := range filterFunctions {
+				if !want(element) {
+					continue ElementLoop
+				}
+			}
+			out <- element
+		}
+	}()
+	return out
+}
+
+func InactiveSince[T Updater](t time.Time) func(T) bool {
+	return func(resource T) bool {
+		if !resource.LastUpdated().IsZero() &&  resource.LastUpdated().Before(t) {
+			return true
+		}
+		return false
+	}
+}
+
+func IDIsNot[T Identifier](ids ...string) func(T) bool {
+	return func(resource T) bool {
+		for i := range ids {
+			if resource.ID() == ids[i] {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func NameIsNot[T Namer](names ...string) func(T) bool {
+	return func(resource T) bool {
+		for i := range names {
+			if resource.Name() == names[i] {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func NameDoesNotContain[T Namer](substrings ...string) func(T) bool {
+	return func(resource T) bool {
+		for i := range substrings {
+			if strings.Contains(resource.Name(), substrings[i]) {
+				return false
+			}
+		}
+		return true
+	}
+}
