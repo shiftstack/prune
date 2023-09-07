@@ -12,6 +12,7 @@ import (
 type ApplicationCredential struct {
 	resource *applicationcredentials.ApplicationCredential
 	client   *gophercloud.ServiceClient
+	userID   string
 }
 
 func (s ApplicationCredential) LastUpdated() time.Time {
@@ -19,7 +20,7 @@ func (s ApplicationCredential) LastUpdated() time.Time {
 }
 
 func (s ApplicationCredential) Delete() error {
-	return applicationcredentials.Delete(s.client, "", s.resource.ID).ExtractErr()
+	return applicationcredentials.Delete(s.client, s.userID, s.resource.ID).ExtractErr()
 }
 
 func (s ApplicationCredential) Type() string {
@@ -59,6 +60,7 @@ func ListPerishableApplicationCredentials(client *gophercloud.ServiceClient) <-c
 					ch <- ApplicationCredential{
 						resource: &resources[i],
 						client:   client,
+						userID:   userID,
 					}
 				}
 			}
