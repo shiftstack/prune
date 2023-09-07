@@ -13,7 +13,14 @@ import (
 
 const ConsideredStale = 5 * time.Second
 
-var dryRun = true
+var dryRun = func() bool {
+	for _, arg := range os.Args {
+		if arg == "--no-dry-run" {
+			return false
+		}
+	}
+	return true
+}()
 
 type Resource interface {
 	Updater
