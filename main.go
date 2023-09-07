@@ -11,7 +11,7 @@ import (
 	"github.com/gophercloud/utils/openstack/clientconfig"
 )
 
-const ConsideredStale = 7 * time.Hour
+const bestBefore = 7 * time.Hour
 
 var dryRun = func() bool {
 	for _, arg := range os.Args {
@@ -119,7 +119,7 @@ func main() {
 
 	now := time.Now()
 	report := Report{CreatedAt: now}
-	for staleResource := range Filter(resources, InactiveSince[Resource](now.Add(-ConsideredStale))) {
+	for staleResource := range Filter(resources, InactiveSince[Resource](now.Add(-bestBefore))) {
 		report.AddFound(staleResource)
 
 		if !dryRun {
