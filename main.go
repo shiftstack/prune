@@ -11,7 +11,7 @@ import (
 	"github.com/gophercloud/utils/openstack/clientconfig"
 )
 
-const ConsideredStale = 5 * time.Second
+const ConsideredStale = 7 * time.Hour
 
 var dryRun = func() bool {
 	for _, arg := range os.Args {
