@@ -36,6 +36,9 @@ func (s FloatingIP) Name() string {
 
 func (s FloatingIP) ClusterID() string {
 	for _, tag := range s.resource.Tags {
+		if value := strings.TrimPrefix(tag, "openshiftClusterID="); value != tag {
+			return value
+		}
 		// https://github.com/openshift/release/pull/43063
 		if value := strings.TrimPrefix(tag, "PROW_CLUSTER_NAME="); value != tag {
 			return value
