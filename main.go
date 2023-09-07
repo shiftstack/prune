@@ -6,8 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/utils/openstack/clientconfig"
 )
 
@@ -49,37 +47,24 @@ type Clusterer interface{ ClusterID() string }
 func main() {
 	resources := make(chan Resource)
 	{
-		ao, err := clientconfig.AuthOptions(&clientconfig.ClientOpts{
-			Cloud: os.Getenv("OS_CLOUD"),
-		})
+		opts := clientconfig.ClientOpts{Cloud: os.Getenv("OS_CLOUD")}
+		loadbalancerClient, err := clientconfig.NewServiceClient("load-balancer", &opts)
 		if err != nil {
 			panic(err)
 		}
-		provider, err := openstack.AuthenticatedClient(*ao)
+		computeClient, err := clientconfig.NewServiceClient("compute", &opts)
 		if err != nil {
 			panic(err)
 		}
-		endpointOpts := gophercloud.EndpointOpts{
-			Region: os.Getenv("OS_REGION_NAME"),
-		}
-
-		loadbalancerClient, err := openstack.NewLoadBalancerV2(provider, endpointOpts)
+		networkClient, err := clientconfig.NewServiceClient("network", &opts)
 		if err != nil {
 			panic(err)
 		}
-		networkClient, err := openstack.NewNetworkV2(provider, endpointOpts)
+		volumeClient, err := clientconfig.NewServiceClient("volume", &opts)
 		if err != nil {
 			panic(err)
 		}
-		computeClient, err := openstack.NewComputeV2(provider, endpointOpts)
-		if err != nil {
-			panic(err)
-		}
-		volumeClient, err := openstack.NewBlockStorageV3(provider, endpointOpts)
-		if err != nil {
-			panic(err)
-		}
-		identityClient, err := openstack.NewIdentityV3(provider, endpointOpts)
+		identityClient, err := clientconfig.NewServiceClient("identity", &opts)
 		if err != nil {
 			panic(err)
 		}
