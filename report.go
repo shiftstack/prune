@@ -8,7 +8,7 @@ import (
 type resources []Resource
 
 type Report struct {
-	CreatedAt      time.Time `json:"created_at"`
+	Time           time.Time `json:"timestamp"`
 	Found          resources `json:"found"`
 	Deleted        resources `json:"deleted"`
 	FailedToDelete resources `json:"failed_to_delete"`

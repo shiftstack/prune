@@ -79,6 +79,10 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		identityClient, err := openstack.NewIdentityV3(provider, endpointOpts)
+		if err != nil {
+			panic(err)
+		}
 
 		go func() {
 			defer close(resources)
@@ -114,11 +118,15 @@ func main() {
 			for res := range Filter(ListSecurityGroups(networkClient), NameIsNot[Resource]("default", "ssh", "allow_ssh", "allow_ping")) {
 				resources <- res
 			}
+
+			for res := range ListPerishableApplicationCredentials(identityClient) {
+				resources <- res
+			}
 		}()
 	}
 
 	now := time.Now()
-	report := Report{CreatedAt: now}
+	report := Report{Time: now}
 	for staleResource := range Filter(resources, InactiveSince[Resource](now.Add(-bestBefore))) {
 		report.AddFound(staleResource)
 
