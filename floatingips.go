@@ -54,9 +54,9 @@ func ListFloatingIPs(client *gophercloud.ServiceClient) <-chan Resource {
 		if err := floatingips.List(client, floatingips.ListOpts{}).EachPage(func(page pagination.Page) (bool, error) {
 			floatingIPPage, err := floatingips.ExtractFloatingIPs(page)
 
-			for _, floatingIP := range floatingIPPage {
+			for i := range floatingIPPage {
 				ch <- FloatingIP{
-					resource: &floatingIP,
+					resource: &floatingIPPage[i],
 					client:   client,
 				}
 			}

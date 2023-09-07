@@ -69,15 +69,15 @@ func ListRouters(client *gophercloud.ServiceClient) <-chan Resource {
 				return true, err
 			}
 
-			for _, router := range routerPage.Routers {
-				if err := ports.List(client, ports.ListOpts{DeviceID: router.ID}).EachPage(func(page pagination.Page) (bool, error) {
+			for i := range routerPage.Routers {
+				if err := ports.List(client, ports.ListOpts{DeviceID: routerPage.Routers[i].ID}).EachPage(func(page pagination.Page) (bool, error) {
 					portList, err := ports.ExtractPorts(page)
 					if err != nil {
 						return false, err
 					}
 					for _, port := range portList {
-						for _, fixedIP := range port.FixedIPs {
-							router.subnets = append(router.subnets, fixedIP.SubnetID)
+						for j := range port.FixedIPs {
+							routerPage.Routers[i].subnets = append(routerPage.Routers[i].subnets, port.FixedIPs[j].SubnetID)
 						}
 					}
 					return true, nil
@@ -85,7 +85,7 @@ func ListRouters(client *gophercloud.ServiceClient) <-chan Resource {
 					return true, err
 				}
 				ch <- Router{
-					resource: &router,
+					resource: &routerPage.Routers[i],
 					client:   client,
 				}
 			}

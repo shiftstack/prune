@@ -48,11 +48,11 @@ func ListKeyPairs(client *gophercloud.ServiceClient) <-chan Resource {
 			if err != nil {
 				return true, err
 			}
-			for _, keypair := range keypairPage {
+			for i := range keypairPage {
 				var k struct {
 					KeyPairParser `json:"keypair"`
 				}
-				if err := keypairs.Get(client, keypair.Name, nil).ExtractInto(&k); err != nil {
+				if err := keypairs.Get(client, keypairPage[i].Name, nil).ExtractInto(&k); err != nil {
 					return true, err
 				}
 				log.Println(k)
