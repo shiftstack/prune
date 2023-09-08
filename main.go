@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/utils/openstack/clientconfig"
 )
 
@@ -85,6 +87,18 @@ func main() {
 			panic(err)
 		}
 
+		shareClient, err := clientconfig.NewServiceClient("sharev2", &opts)
+		if err != nil {
+			// Ignore the error if Manila is not available in the cloud
+			var gerr *gophercloud.ErrEndpointNotFound
+			if errors.As(err, &gerr) {
+				log.Println("Skipping share deletion because Manila endpoint was not found")
+			} else {
+				panic(err)
+			}
+			shareClient = nil
+		}
+
 		go func() {
 			defer close(resources)
 
@@ -126,6 +140,12 @@ func main() {
 
 			for res := range Filter(ListSecurityGroups(networkClient), NameIsNot[Resource]("default", "ssh", "allow_ssh", "allow_ping")) {
 				resources <- res
+			}
+
+			if shareClient != nil {
+				for res := range ListShares(shareClient) {
+					resources <- res
+				}
 			}
 
 			for res := range ListPerishableApplicationCredentials(identityClient) {
