@@ -126,7 +126,7 @@ func main() {
 				resources <- res
 			}
 
-			for res := range Filter(ListNetworks(networkClient), NameDoesNotContain[Resource]("hostonly", "external", "sahara-access", "mellanox", "intel", "public", "slaac")) {
+			for res := range Filter(ListNetworks(networkClient), NameDoesNotContain[Resource]("hostonly", "external", "sahara-access", "mellanox", "intel", "public")) {
 				resources <- res
 			}
 
