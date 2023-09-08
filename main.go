@@ -35,13 +35,6 @@ type Identifier interface{ ID() string }
 type Namer interface{ Name() string }
 type Clusterer interface{ ClusterID() string }
 
-// func runClusterDestroy(provider *gophercloud.ProviderClient, endpointOpts gophercloud.EndpointOpts) {
-// 	networkClient, err := openstack.NewNetworkV2(provider, endpointOpts)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// }
-
 // TODO:  keypairs, images
 // TODO: volume admin setting
 func main() {
