@@ -42,7 +42,7 @@ type Clusterer interface{ ClusterID() string }
 // 	}
 // }
 
-// TODO: containers, keypairs, images
+// TODO:  keypairs, images
 // TODO: volume admin setting
 func main() {
 	resources := make(chan Resource)
@@ -65,6 +65,10 @@ func main() {
 			panic(err)
 		}
 		identityClient, err := clientconfig.NewServiceClient("identity", &opts)
+		if err != nil {
+			panic(err)
+		}
+		containerClient, err := clientconfig.NewServiceClient("object-store", &opts)
 		if err != nil {
 			panic(err)
 		}
@@ -105,6 +109,10 @@ func main() {
 			}
 
 			for res := range ListPerishableApplicationCredentials(identityClient) {
+				resources <- res
+			}
+
+			for res := range ListContainers(containerClient, ListNetworks(networkClient)) {
 				resources <- res
 			}
 		}()
