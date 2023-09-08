@@ -1,6 +1,7 @@
 package main
 
 import (
+	"regexp"
 	"strings"
 	"time"
 )
@@ -61,5 +62,21 @@ func NameDoesNotContain[T Namer](substrings ...string) func(T) bool {
 			}
 		}
 		return true
+	}
+}
+
+func NameMatchesOneOfThesePatterns[T Namer](regexps ...string) func(T) bool {
+	patterns := make([]*regexp.Regexp, len(regexps))
+	for i := range regexps {
+		patterns[i] = regexp.MustCompile(regexps[i])
+	}
+
+	return func(resource T) bool {
+		for i := range patterns {
+			if patterns[i].MatchString(resource.Name()) {
+				return true
+			}
+		}
+		return false
 	}
 }

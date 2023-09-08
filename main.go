@@ -49,7 +49,7 @@ type Identifier interface{ ID() string }
 type Namer interface{ Name() string }
 type Clusterer interface{ ClusterID() string }
 
-// TODO:  keypairs, images
+// TODO:  keypairs
 // TODO: volume admin setting
 func main() {
 	{
@@ -83,6 +83,10 @@ func main() {
 			panic(err)
 		}
 		containerClient, err := clientconfig.NewServiceClient("object-store", &opts)
+		if err != nil {
+			panic(err)
+		}
+		imageClient, err := clientconfig.NewServiceClient("image", &opts)
 		if err != nil {
 			panic(err)
 		}
@@ -153,6 +157,10 @@ func main() {
 			}
 
 			for res := range Filter(ListContainers(containerClient, ListNetworks(networkClient)), NameIsNot[Resource]("shiftstack-metrics", "shiftstack-bot")) {
+				resources <- res
+			}
+
+			for res := range Filter(ListImages(imageClient), NameMatchesOneOfThesePatterns[Resource](".{8}-.{5}-.{5}-ignition", ".{8}-.{5}-.{5}-rhcos", "bootstrap-ign-.{8}-.{5}-.{5}", "rhcos-.{7,8}-.{5}")) {
 				resources <- res
 			}
 		}()
