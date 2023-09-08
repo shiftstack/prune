@@ -88,6 +88,10 @@ func main() {
 		go func() {
 			defer close(resources)
 
+			for res := range ListFloatingIPs(networkClient) {
+				resources <- res
+			}
+
 			for res := range ListLoadBalancers(loadbalancerClient) {
 				resources <- res
 			}
@@ -97,6 +101,14 @@ func main() {
 			}
 
 			for res := range Filter(ListRouters(networkClient), NameIsNot[Resource]("dualstack")) {
+				resources <- res
+			}
+
+			for res := range ListTrunks(networkClient) {
+				resources <- res
+			}
+
+			for res := range ListPorts(networkClient) {
 				resources <- res
 			}
 
@@ -112,10 +124,6 @@ func main() {
 				resources <- res
 			}
 
-			for res := range ListFloatingIPs(networkClient) {
-				resources <- res
-			}
-
 			for res := range Filter(ListSecurityGroups(networkClient), NameIsNot[Resource]("default", "ssh", "allow_ssh", "allow_ping")) {
 				resources <- res
 			}
@@ -124,7 +132,7 @@ func main() {
 				resources <- res
 			}
 
-			for res := range ListContainers(containerClient, ListNetworks(networkClient)) {
+			for res := range Filter(ListContainers(containerClient, ListNetworks(networkClient)), NameIsNot[Resource]("shiftstack-metrics")) {
 				resources <- res
 			}
 		}()
