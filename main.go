@@ -4,12 +4,24 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gophercloud/utils/openstack/clientconfig"
 )
 
-const bestBefore = 7 * time.Hour
+var bestBefore = func() time.Duration {
+	for _, arg := range os.Args {
+		if value := strings.TrimPrefix(arg, "--resource-ttl="); value != arg {
+			d, err := time.ParseDuration(value)
+			if err != nil {
+				panic(err)
+			}
+			return d
+		}
+	}
+	return 7 * time.Hour
+}()
 
 var dryRun = func() bool {
 	for _, arg := range os.Args {
@@ -38,6 +50,13 @@ type Clusterer interface{ ClusterID() string }
 // TODO:  keypairs, images
 // TODO: volume admin setting
 func main() {
+	{
+		verb := "Listing"
+		if !dryRun {
+			verb = "Deleting"
+		}
+		log.Printf("%s everything older than %s\n", verb, bestBefore)
+	}
 	resources := make(chan Resource)
 	{
 		opts := clientconfig.ClientOpts{Cloud: os.Getenv("OS_CLOUD")}
