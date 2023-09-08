@@ -15,8 +15,8 @@ type Router struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s Router) LastUpdated() time.Time {
-	return s.resource.UpdatedAt
+func (s Router) CreatedAt() time.Time {
+	return s.resource.CreatedAt
 }
 
 func (s Router) Delete() error {
@@ -51,7 +51,7 @@ func (s Router) ClusterID() string {
 
 type RouterParser struct {
 	routers.Router
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
 	subnets   []string
 }
 

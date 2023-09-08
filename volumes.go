@@ -13,8 +13,8 @@ type Volume struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s Volume) LastUpdated() time.Time {
-	return s.resource.UpdatedAt
+func (s Volume) CreatedAt() time.Time {
+	return s.resource.CreatedAt
 }
 
 func (s Volume) Delete() error {

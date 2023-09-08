@@ -35,7 +35,7 @@ var dryRun = func() bool {
 }()
 
 type Resource interface {
-	Updater
+	Dater
 	Deleter
 	Identifier
 	Namer
@@ -43,7 +43,7 @@ type Resource interface {
 }
 
 type Typer interface{ Type() string }
-type Updater interface{ LastUpdated() time.Time }
+type Dater interface{ CreatedAt() time.Time }
 type Deleter interface{ Delete() error }
 type Identifier interface{ ID() string }
 type Namer interface{ Name() string }
@@ -168,11 +168,11 @@ func main() {
 
 	now := time.Now()
 	report := Report{Time: now}
-	for staleResource := range Filter(resources, InactiveSince[Resource](now.Add(-bestBefore))) {
+	for staleResource := range Filter(resources, CreatedBefore[Resource](now.Add(-bestBefore))) {
 		report.AddFound(staleResource)
 
 		if !dryRun {
-			log.Printf("Deleting %s %q (updated %s)...\n", staleResource.Type(), staleResource.ID(), staleResource.LastUpdated().Format(time.RFC3339))
+			log.Printf("Deleting %s %q (created at %s)...\n", staleResource.Type(), staleResource.ID(), staleResource.CreatedAt().Format(time.RFC3339))
 			if err := staleResource.Delete(); err != nil {
 				log.Printf("error deleting %s %q: %v\n", staleResource.Type(), staleResource.ID(), err)
 				report.AddFailedToDelete(staleResource)

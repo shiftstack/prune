@@ -14,8 +14,8 @@ type FloatingIP struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s FloatingIP) LastUpdated() time.Time {
-	return s.resource.UpdatedAt
+func (s FloatingIP) CreatedAt() time.Time {
+	return s.resource.CreatedAt
 }
 
 func (s FloatingIP) Delete() error {

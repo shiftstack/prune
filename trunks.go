@@ -14,8 +14,8 @@ type Trunk struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s Trunk) LastUpdated() time.Time {
-	return s.resource.UpdatedAt
+func (s Trunk) CreatedAt() time.Time {
+	return s.resource.CreatedAt
 }
 
 func (s Trunk) Delete() error {

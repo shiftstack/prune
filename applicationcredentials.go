@@ -15,7 +15,7 @@ type ApplicationCredential struct {
 	userID   string
 }
 
-func (s ApplicationCredential) LastUpdated() time.Time {
+func (s ApplicationCredential) CreatedAt() time.Time {
 	return s.resource.ExpiresAt
 }
 

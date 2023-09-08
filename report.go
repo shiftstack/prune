@@ -28,11 +28,11 @@ func (rep *Report) AddFailedToDelete(r Resource) {
 
 func (res resources) MarshalJSON() ([]byte, error) {
 	type resourcePrinter struct {
-		ClusterID   string    `json:"cluster_id,omitempty"`
-		ID          string    `json:"id"`
-		LastUpdated time.Time `json:"last_updated"`
-		Name        string    `json:"name"`
-		Type        string    `json:"type"`
+		ClusterID string    `json:"cluster_id,omitempty"`
+		ID        string    `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		Name      string    `json:"name"`
+		Type      string    `json:"type"`
 	}
 
 	printers := make([]resourcePrinter, len(res))
@@ -43,11 +43,11 @@ func (res resources) MarshalJSON() ([]byte, error) {
 			clusterID = c.ClusterID()
 		}
 		printers[i] = resourcePrinter{
-			ClusterID:   clusterID,
-			ID:          res[i].ID(),
-			LastUpdated: res[i].LastUpdated(),
-			Name:        res[i].Name(),
-			Type:        res[i].Type(),
+			ClusterID: clusterID,
+			ID:        res[i].ID(),
+			CreatedAt: res[i].CreatedAt(),
+			Name:      res[i].Name(),
+			Type:      res[i].Type(),
 		}
 	}
 	return json.Marshal(printers)

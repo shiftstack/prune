@@ -13,8 +13,8 @@ type Snapshot struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s Snapshot) LastUpdated() time.Time {
-	return s.resource.UpdatedAt
+func (s Snapshot) CreatedAt() time.Time {
+	return s.resource.CreatedAt
 }
 
 func (s Snapshot) Delete() error {

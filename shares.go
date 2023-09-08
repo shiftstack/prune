@@ -14,8 +14,8 @@ type Share struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s Share) LastUpdated() time.Time {
-	return s.resource.UpdatedAt
+func (s Share) CreatedAt() time.Time {
+	return s.resource.CreatedAt
 }
 
 func (s Share) Delete() error {

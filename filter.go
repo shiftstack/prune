@@ -23,9 +23,9 @@ func Filter[T any](in <-chan T, filterFunctions ...func(T) bool) <-chan T {
 	return out
 }
 
-func InactiveSince[T Updater](t time.Time) func(T) bool {
+func CreatedBefore[T Dater](t time.Time) func(T) bool {
 	return func(resource T) bool {
-		if resource.LastUpdated().Before(t) {
+		if resource.CreatedAt().Before(t) {
 			return true
 		}
 		return false

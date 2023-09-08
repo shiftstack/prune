@@ -14,8 +14,8 @@ type SecurityGroup struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s SecurityGroup) LastUpdated() time.Time {
-	return s.resource.UpdatedAt
+func (s SecurityGroup) CreatedAt() time.Time {
+	return s.resource.CreatedAt
 }
 
 func (s SecurityGroup) Delete() error {

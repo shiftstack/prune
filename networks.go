@@ -14,8 +14,8 @@ type Network struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s Network) LastUpdated() time.Time {
-	return s.resource.UpdatedAt
+func (s Network) CreatedAt() time.Time {
+	return s.resource.CreatedAt
 }
 
 func (s Network) Delete() error {

@@ -15,9 +15,9 @@ type Container struct {
 	associatedResource Resource
 }
 
-func (s Container) LastUpdated() time.Time {
+func (s Container) CreatedAt() time.Time {
 	if s.associatedResource != nil {
-		return s.associatedResource.LastUpdated()
+		return s.associatedResource.CreatedAt()
 	}
 	return time.Time{}
 }

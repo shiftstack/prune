@@ -13,10 +13,7 @@ type LoadBalancer struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s LoadBalancer) LastUpdated() time.Time {
-	if !s.resource.UpdatedAt.IsZero() {
-		return s.resource.UpdatedAt
-	}
+func (s LoadBalancer) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 

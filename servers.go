@@ -13,8 +13,8 @@ type Server struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s Server) LastUpdated() time.Time {
-	return s.resource.Updated
+func (s Server) CreatedAt() time.Time {
+	return s.resource.Created
 }
 
 func (s Server) Delete() error {

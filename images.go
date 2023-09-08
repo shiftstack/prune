@@ -14,10 +14,7 @@ type Image struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s Image) LastUpdated() time.Time {
-	if !s.resource.UpdatedAt.IsZero() {
-		s.resource.UpdatedAt.IsZero()
-	}
+func (s Image) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 

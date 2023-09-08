@@ -14,8 +14,8 @@ type Port struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s Port) LastUpdated() time.Time {
-	return s.resource.UpdatedAt
+func (s Port) CreatedAt() time.Time {
+	return s.resource.CreatedAt
 }
 
 func (s Port) Delete() error {

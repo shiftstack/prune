@@ -14,7 +14,7 @@ type KeyPair struct {
 	client   *gophercloud.ServiceClient
 }
 
-func (s KeyPair) LastUpdated() time.Time {
+func (s KeyPair) CreatedAt() time.Time {
 	return s.resource.UpdatedAt
 }
 
