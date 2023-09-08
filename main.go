@@ -152,7 +152,7 @@ func main() {
 				resources <- res
 			}
 
-			for res := range Filter(ListContainers(containerClient, ListNetworks(networkClient)), NameIsNot[Resource]("shiftstack-metrics")) {
+			for res := range Filter(ListContainers(containerClient, ListNetworks(networkClient)), NameIsNot[Resource]("shiftstack-metrics", "shiftstack-bot")) {
 				resources <- res
 			}
 		}()
