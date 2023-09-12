@@ -49,7 +49,7 @@ type Identifier interface{ ID() string }
 type Namer interface{ Name() string }
 type Clusterer interface{ ClusterID() string }
 
-// TODO:  keypairs
+// TODO:  server groups, keypairs
 // TODO: volume admin setting
 func main() {
 	{
