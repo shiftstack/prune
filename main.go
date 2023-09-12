@@ -96,7 +96,7 @@ func main() {
 			// Ignore the error if Manila is not available in the cloud
 			var gerr *gophercloud.ErrEndpointNotFound
 			if errors.As(err, &gerr) {
-				log.Println("Skipping share deletion because Manila endpoint was not found")
+				log.Println("Skipping share listing because Manila endpoint was not found")
 			} else {
 				panic(err)
 			}
