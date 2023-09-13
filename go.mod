@@ -1,6 +1,6 @@
 module github.com/shiftstack/prune
 
-go 1.21.0
+go 1.20
 
 require (
 	github.com/gophercloud/gophercloud v1.6.0
