@@ -82,13 +82,21 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		containerClient, err := clientconfig.NewServiceClient("object-store", &opts)
-		if err != nil {
-			panic(err)
-		}
 		imageClient, err := clientconfig.NewServiceClient("image", &opts)
 		if err != nil {
 			panic(err)
+		}
+
+		containerClient, err := clientconfig.NewServiceClient("object-store", &opts)
+		if err != nil {
+			// Ignore the error if Swift is not available in the cloud
+			var gerr *gophercloud.ErrEndpointNotFound
+			if errors.As(err, &gerr) {
+				log.Println("Skipping container listing because the Swift endpoint was not found")
+			} else {
+				panic(err)
+			}
+			containerClient = nil
 		}
 
 		shareClient, err := clientconfig.NewServiceClient("sharev2", &opts)
@@ -96,7 +104,7 @@ func main() {
 			// Ignore the error if Manila is not available in the cloud
 			var gerr *gophercloud.ErrEndpointNotFound
 			if errors.As(err, &gerr) {
-				log.Println("Skipping share listing because Manila endpoint was not found")
+				log.Println("Skipping share listing because the Manila endpoint was not found")
 			} else {
 				panic(err)
 			}
@@ -156,8 +164,10 @@ func main() {
 				resources <- res
 			}
 
-			for res := range Filter(ListContainers(containerClient, ListNetworks(networkClient)), NameIsNot[Resource]("shiftstack-metrics", "shiftstack-bot")) {
-				resources <- res
+			if containerClient != nil {
+				for res := range Filter(ListContainers(containerClient, ListNetworks(networkClient)), NameIsNot[Resource]("shiftstack-metrics", "shiftstack-bot")) {
+					resources <- res
+				}
 			}
 
 			for res := range Filter(ListImages(imageClient), NameMatchesOneOfThesePatterns[Resource](".{8}-.{5}-.{5}-ignition", ".{8}-.{5}-.{5}-rhcos", "bootstrap-ign-.{8}-.{5}-.{5}", "rhcos-.{7,8}-.{5}")) {
