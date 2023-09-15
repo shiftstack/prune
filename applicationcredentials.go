@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gophercloud/gophercloud"
@@ -33,6 +34,16 @@ func (s ApplicationCredential) ID() string {
 
 func (s ApplicationCredential) Name() string {
 	return s.resource.Name
+}
+
+func (s ApplicationCredential) ClusterID() string {
+	for _, tag := range strings.Split(s.resource.Description, " ") {
+		// https://github.com/openshift/release/pull/43348
+		if value := strings.TrimPrefix(tag, "PROW_CLUSTER_NAME="); value != tag {
+			return value
+		}
+	}
+	return ""
 }
 
 func getUserID(client *gophercloud.ServiceClient) (string, error) {
