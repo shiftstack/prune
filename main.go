@@ -34,6 +34,15 @@ var dryRun = func() bool {
 	return true
 }()
 
+var slackHook = func() string {
+	for _, arg := range os.Args {
+		if value := strings.TrimPrefix(arg, "--slack-hook="); value != arg {
+			return value
+		}
+	}
+	return ""
+}()
+
 type Resource interface {
 	Dater
 	Deleter
@@ -58,6 +67,9 @@ func main() {
 			verb = "Deleting"
 		}
 		log.Printf("%s everything older than %s\n", verb, bestBefore)
+	}
+	if slackHook != "" {
+		log.Printf("Sending failed_to_delete report to Slack\n")
 	}
 	resources := make(chan Resource)
 	{
@@ -195,6 +207,12 @@ func main() {
 
 	if err := json.NewEncoder(os.Stdout).Encode(report); err != nil {
 		panic(err)
+	}
+
+	if len(report.FailedToDelete) > 0 && slackHook != "" {
+		if err := reportToSlack(slackHook, report); err != nil {
+			log.Fatalf("Failed to send a report to Slack: %v", err)
+		}
 	}
 }
 
