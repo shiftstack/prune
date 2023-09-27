@@ -40,6 +40,10 @@ func (s Router) Name() string {
 	return s.resource.Name
 }
 
+func (s Router) Tags() []string {
+	return s.resource.Tags
+}
+
 func (s Router) ClusterID() string {
 	for _, tag := range s.resource.Tags {
 		if value := strings.TrimPrefix(tag, "openshiftClusterID="); value != tag {

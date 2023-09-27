@@ -80,3 +80,16 @@ func NameMatchesOneOfThesePatterns[T Namer](regexps ...string) func(T) bool {
 		return false
 	}
 }
+
+func TagsDoNotContain(tag string) func(Resource) bool {
+	return func(resource Resource) bool {
+		if tagger, ok := resource.(Tagger); ok {
+			for _, have := range tagger.Tags() {
+				if have == tag {
+					return false
+				}
+			}
+		}
+		return true
+	}
+}

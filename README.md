@@ -1,5 +1,9 @@
 # Prune stale OpenShift resources in OpenStack
 
+List resources older than a threshold.
+
+Ignores resources tagged with: `shiftstack-prune=keep`.
+
 ## Use
 
 Dry run:

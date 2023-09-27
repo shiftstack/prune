@@ -33,6 +33,10 @@ func (s LoadBalancer) Name() string {
 	return s.resource.Name
 }
 
+func (s LoadBalancer) Tags() []string {
+	return s.resource.Tags
+}
+
 func ListLoadBalancers(client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
