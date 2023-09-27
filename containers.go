@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"log"
 	"time"
 
 	"github.com/gophercloud/gophercloud"
@@ -81,7 +83,12 @@ func ListContainers(client *gophercloud.ServiceClient, networks <-chan Resource)
 			}
 			return true, nil
 		}); err != nil {
-			panic(err)
+			var errForbidden gophercloud.ErrDefault403
+			if errors.As(err, &errForbidden) {
+				log.Printf("Skipping containers deletion. User not authorized to perform the requested action")
+			} else {
+				panic(err)
+			}
 		}
 	}()
 	return ch
