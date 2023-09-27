@@ -34,6 +34,10 @@ func (s FloatingIP) Name() string {
 	return s.resource.FloatingIP
 }
 
+func (s FloatingIP) Tags() []string {
+	return s.resource.Tags
+}
+
 func (s FloatingIP) ClusterID() string {
 	for _, tag := range s.resource.Tags {
 		if value := strings.TrimPrefix(tag, "openshiftClusterID="); value != tag {

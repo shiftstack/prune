@@ -34,6 +34,10 @@ func (s Port) Name() string {
 	return s.resource.Name
 }
 
+func (s Port) Tags() []string {
+	return s.resource.Tags
+}
+
 func (s Port) ClusterID() string {
 	for _, tag := range s.resource.Tags {
 		if value := strings.TrimPrefix(tag, "openshiftClusterID="); value != tag {

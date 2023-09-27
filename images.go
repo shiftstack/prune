@@ -34,6 +34,10 @@ func (s Image) Name() string {
 	return s.resource.Name
 }
 
+func (s Image) Tags() []string {
+	return s.resource.Tags
+}
+
 func (s Image) ClusterID() string {
 	for _, tag := range s.resource.Tags {
 		// https://github.com/openshift/installer/blob/75ac0821ee012d8855dadf42c25cc807d8ef8d51/pkg/tfvars/openstack/rhcos_image.go#L68

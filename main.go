@@ -57,6 +57,7 @@ type Deleter interface{ Delete() error }
 type Identifier interface{ ID() string }
 type Namer interface{ Name() string }
 type Clusterer interface{ ClusterID() string }
+type Tagger interface{ Tags() []string }
 
 // TODO:  server groups, keypairs
 // TODO: volume admin setting
@@ -81,6 +82,9 @@ func main() {
 		computeClient, err := clientconfig.NewServiceClient("compute", &opts)
 		if err != nil {
 			panic(err)
+		} else {
+			// Required for server tags
+			computeClient.Microversion = "2.26"
 		}
 		networkClient, err := clientconfig.NewServiceClient("network", &opts)
 		if err != nil {
@@ -190,7 +194,7 @@ func main() {
 
 	now := time.Now()
 	report := Report{Time: now}
-	for staleResource := range Filter(resources, CreatedBefore[Resource](now.Add(-bestBefore))) {
+	for staleResource := range Filter(resources, TagsDoNotContain("shiftstack-prune=keep"), CreatedBefore[Resource](now.Add(-bestBefore))) {
 		report.AddFound(staleResource)
 
 		if !dryRun {

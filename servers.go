@@ -33,6 +33,13 @@ func (s Server) Name() string {
 	return s.resource.Name
 }
 
+func (s Server) Tags() []string {
+	if s.resource.Tags != nil {
+		return *s.resource.Tags
+	}
+	return nil
+}
+
 func (s Server) ClusterID() string {
 	return s.resource.Metadata["openshiftClusterID"]
 }

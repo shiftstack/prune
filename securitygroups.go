@@ -34,6 +34,10 @@ func (s SecurityGroup) Name() string {
 	return s.resource.Name
 }
 
+func (s SecurityGroup) Tags() []string {
+	return s.resource.Tags
+}
+
 func (s SecurityGroup) ClusterID() string {
 	for _, tag := range s.resource.Tags {
 		if value := strings.TrimPrefix(tag, "openshiftClusterID="); value != tag {
