@@ -2,11 +2,13 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
+	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects"
 	"github.com/gophercloud/gophercloud/pagination"
 )
 
@@ -25,7 +27,52 @@ func (s Container) CreatedAt() time.Time {
 }
 
 func (s Container) Delete() error {
-	_, err := containers.Delete(s.client, s.ID()).Extract()
+	pager := objects.List(s.client, s.ID(), &objects.ListOpts{
+		Full:  false,
+		Limit: 50,
+	})
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
+		objectsOnPage, err := objects.ExtractNames(page)
+		if err != nil {
+			return false, err
+		}
+		resp, err := objects.BulkDelete(s.client, s.ID(), objectsOnPage).Extract()
+		if err != nil {
+			return false, err
+		}
+		if len(resp.Errors) > 0 {
+			// Convert resp.Errors to golang errors.
+			// Each error is represented by a list of 2 strings, where the first one
+			// is the object name, and the second one contains an error message.
+			errs := make([]error, len(resp.Errors))
+			for i, objectError := range resp.Errors {
+				errs[i] = fmt.Errorf("cannot delete object %s: %s", objectError[0], objectError[1])
+			}
+
+			return false, fmt.Errorf("errors occurred during bulk deleting of container %s objects: %v", s.ID(), errs)
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		var gerr gophercloud.ErrDefault404
+		if !errors.As(err, &gerr) {
+			log.Printf("Bulk deleting of container %q objects failed: %v", s.ID(), err)
+			return err
+		}
+	}
+	log.Printf("Deleting container %q", s.ID())
+	_, err = containers.Delete(s.client, s.ID()).Extract()
+	if err != nil {
+		// Ignore the error if the container cannot be found and return with an appropriate message if it's another type of error
+		var gerr gophercloud.ErrDefault404
+		if !errors.As(err, &gerr) {
+			log.Printf("Deleting container %q failed: %v", s.ID(), err)
+			return err
+		}
+		log.Printf("Cannot find container %q. It's probably already been deleted.", s.ID())
+	}
+
 	return err
 }
 
