@@ -69,9 +69,6 @@ func main() {
 		}
 		log.Printf("%s everything older than %s\n", verb, bestBefore)
 	}
-	if slackHook != "" {
-		log.Printf("Sending failed_to_delete report to Slack\n")
-	}
 	resources := make(chan Resource)
 	{
 		opts := clientconfig.ClientOpts{Cloud: os.Getenv("OS_CLOUD")}
@@ -214,6 +211,7 @@ func main() {
 	}
 
 	if len(report.FailedToDelete) > 0 && slackHook != "" {
+		log.Printf("Sending failed_to_delete report to Slack")
 		if err := reportToSlack(slackHook, report); err != nil {
 			log.Fatalf("Failed to send a report to Slack: %v", err)
 		}
