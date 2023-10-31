@@ -54,6 +54,9 @@ func ListPorts(client *gophercloud.ServiceClient) <-chan Resource {
 		if err := ports.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
 			resources, err := ports.ExtractPorts(page)
 			for i := range resources {
+				if strings.Contains(resources[i].DeviceID, "ovnmeta") {
+					continue
+				}
 				ch <- Port{
 					resource: &resources[i],
 					client:   client,
