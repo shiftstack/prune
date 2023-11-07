@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/attachments"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/pagination"
 )
@@ -18,6 +19,15 @@ func (s Volume) CreatedAt() time.Time {
 }
 
 func (s Volume) Delete() error {
+	if s.resource.Attachments != nil {
+		s.client.Microversion = "3.44"
+		for _, attachment := range s.resource.Attachments {
+			err := attachments.Delete(s.client, attachment.AttachmentID).ExtractErr()
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return volumes.Delete(s.client, s.resource.ID, volumes.DeleteOpts{Cascade: true}).ExtractErr()
 }
 
