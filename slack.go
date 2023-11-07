@@ -12,13 +12,13 @@ import (
 
 func reportToSlack(slackHook string, report Report) error {
 	var message strings.Builder
+	message.WriteString("Listing undeletable resources")
 	if clusterType := os.Getenv("CLUSTER_TYPE"); clusterType != "" {
-		message.WriteString("Cluster " + clusterType + "\n")
+		message.WriteString(" for cluster " + clusterType)
 	}
+	message.WriteRune('\n')
 	for _, resource := range report.FailedToDelete {
-		if _, err := message.WriteString(fmt.Sprintf("stale %s: %q\n", resource.Type(), resource.ID())); err != nil {
-			return fmt.Errorf("failed to build the Slack message: %w", err)
-		}
+		message.WriteString(fmt.Sprintf("%s: %q\n", resource.Type(), resource.ID()))
 	}
 
 	var msg bytes.Buffer
