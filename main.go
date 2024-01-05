@@ -74,7 +74,14 @@ func main() {
 		opts := clientconfig.ClientOpts{Cloud: os.Getenv("OS_CLOUD")}
 		loadbalancerClient, err := clientconfig.NewServiceClient("load-balancer", &opts)
 		if err != nil {
-			panic(err)
+			// Ignore the error if Octavia is not available in the cloud
+			var gerr *gophercloud.ErrEndpointNotFound
+			if errors.As(err, &gerr) {
+				log.Println("Skipping load balancer listing because the Octavia endpoint was not found")
+			} else {
+				panic(err)
+			}
+			loadbalancerClient = nil
 		}
 		computeClient, err := clientconfig.NewServiceClient("compute", &opts)
 		if err != nil {
@@ -131,8 +138,10 @@ func main() {
 				resources <- res
 			}
 
-			for res := range ListLoadBalancers(loadbalancerClient) {
-				resources <- res
+			if loadbalancerClient != nil {
+				for res := range ListLoadBalancers(loadbalancerClient) {
+					resources <- res
+				}
 			}
 
 			for res := range Filter(ListServers(computeClient), NameIsNot[Resource]("metrics")) {
