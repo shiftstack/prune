@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -11,6 +12,29 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/utils/openstack/clientconfig"
 )
+
+const helpString = `Prune stale resources from cloud
+
+Usage: prune [OPTION]...
+
+Options:
+  --resource-ttl=<ttl>  Minimum age of resources to prune. ttl is parsed
+                        as a Go duration (e.g. "1h", "30m12s")
+  --slack-hook=<hook>   Slack hook. If provided, updates will be posted to the
+                        relevant Slack channel, otherwise they are dumped to
+                        stdout
+  --no-dry-run          Delete resources
+  --help                Show this help message and exit
+`
+
+var showHelp = func() bool {
+	for _, arg := range os.Args {
+		if arg == "--help" || arg == "-h" {
+			return true
+		}
+	}
+	return false
+}()
 
 var bestBefore = func() time.Duration {
 	for _, arg := range os.Args {
@@ -62,6 +86,11 @@ type Tagger interface{ Tags() []string }
 // TODO:  server groups, keypairs
 // TODO: volume admin setting
 func main() {
+	if showHelp {
+		fmt.Printf(helpString)
+		os.Exit(0)
+	}
+
 	{
 		verb := "Listing"
 		if !dryRun {
