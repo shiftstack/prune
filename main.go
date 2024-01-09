@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/term"
 	"log"
 	"os"
 	"strings"
@@ -244,7 +245,12 @@ func main() {
 		}
 	}
 
-	if err := json.NewEncoder(os.Stdout).Encode(report); err != nil {
+	encoder := json.NewEncoder(os.Stdout)
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		encoder.SetIndent("", "  ")
+	}
+
+	if err := encoder.Encode(report); err != nil {
 		panic(err)
 	}
 
