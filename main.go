@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"golang.org/x/term"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/utils/openstack/clientconfig"
@@ -244,7 +245,12 @@ func main() {
 		}
 	}
 
-	if err := json.NewEncoder(os.Stdout).Encode(report); err != nil {
+	encoder := json.NewEncoder(os.Stdout)
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		encoder.SetIndent("", "  ")
+	}
+
+	if err := encoder.Encode(report); err != nil {
 		panic(err)
 	}
 

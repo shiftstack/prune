@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/gophercloud/gophercloud v1.6.0
 	github.com/gophercloud/utils v0.0.0-20230523080330-de873b9cf00d
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 )
 
 require (
