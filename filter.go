@@ -93,3 +93,19 @@ func TagsDoNotContain(tag string) func(Resource) bool {
 		return true
 	}
 }
+
+func IsNotIgnored(ignoredResources []IgnoredResource) func(Resource) bool {
+	return func(resource Resource) bool {
+		for _, ignoredResource := range ignoredResources {
+			if resource.Type() == *ignoredResource.Type {
+				if ignoredResource.Name != nil && resource.Name() == *ignoredResource.Name {
+					return false
+				}
+				if ignoredResource.ID != nil && resource.ID() == *ignoredResource.ID {
+					return false
+				}
+			}
+		}
+		return true
+	}
+}

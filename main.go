@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/term"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -19,13 +20,43 @@ const helpString = `Prune stale resources from cloud
 Usage: prune [OPTION]...
 
 Options:
-  --resource-ttl=<ttl>  Minimum age of resources to prune. ttl is parsed
-                        as a Go duration (e.g. "1h", "30m12s")
-  --slack-hook=<hook>   Slack hook. If provided, updates will be posted to the
-                        relevant Slack channel, otherwise they are dumped to
-                        stdout
-  --no-dry-run          Delete resources
-  --help                Show this help message and exit
+  --resource-ttl=<ttl>   Minimum age of resources to prune. ttl is parsed
+                         as a Go duration (e.g. "1h", "30m12s")
+  --ignore=<ignore-path> A JSON file containing a list of resources to ignore
+                         when pruning. Each entry should contain a 'type' key
+                         and either a 'name' or 'id' key.
+  --slack-hook=<hook>    Slack hook. If provided, updates will be posted to the
+                         relevant Slack channel, otherwise they are dumped to
+                         stdout
+  --no-dry-run           Delete resources
+  --help                 Show this help message and exit
+
+Examples:
+
+  Given an ignore.json file like so:
+
+    [
+      {
+        "id": "36ac32c1-062e-44c4-b833-2421602c095d",
+        "name": "199.94.60.197",
+        "type": "floating ip"
+      },
+      {
+        "id": "d2929e15-8452-4969-972a-a619d9a87854",
+        "name": "199.94.60.52",
+        "type": "floating ip"
+      }
+    ]
+
+  If you wanted to delete all resources older than 1 hour 30 mins, you can
+  first run the following to see what will be deleted:
+
+    prune --ignore=ignore.json --resource-ttl=1h30s
+
+  Once you are satisfied with the resource deletion, you can pass the
+  --no-dry-run flag.
+
+    prune --ignore=ignore.json --resource-ttl=1h30s --no-dry-run
 `
 
 var showHelp = func() bool {
@@ -36,6 +67,12 @@ var showHelp = func() bool {
 	}
 	return false
 }()
+
+type IgnoredResource struct {
+	ID   *string `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
+	Type *string `json:"type"`
+}
 
 var bestBefore = func() time.Duration {
 	for _, arg := range os.Args {
@@ -68,6 +105,29 @@ var slackHook = func() string {
 	return ""
 }()
 
+var ignoredResources = func() []IgnoredResource {
+	for _, arg := range os.Args {
+		if value := strings.TrimPrefix(arg, "--ignore="); value != arg {
+			if _, err := os.Stat(value); os.IsNotExist(err) {
+				fmt.Fprintf(os.Stderr, "Error: Ignore file does not exist: %s\n", value)
+				os.Exit(1)
+			}
+
+			jsonFile, err := os.Open(value)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: Failed to read ignore file: %+v\n", err)
+			}
+			defer jsonFile.Close()
+
+			byteValue, _ := io.ReadAll(jsonFile)
+			var ignoredResources []IgnoredResource
+			json.Unmarshal(byteValue, &ignoredResources)
+			return ignoredResources
+		}
+	}
+	return []IgnoredResource{}
+}()
+
 type Resource interface {
 	Dater
 	Deleter
@@ -84,7 +144,7 @@ type Namer interface{ Name() string }
 type Clusterer interface{ ClusterID() string }
 type Tagger interface{ Tags() []string }
 
-// TODO:  server groups, keypairs
+// TODO: server groups, keypairs
 // TODO: volume admin setting
 func main() {
 	if showHelp {
@@ -230,7 +290,7 @@ func main() {
 
 	now := time.Now()
 	report := Report{Time: now}
-	for staleResource := range Filter(resources, TagsDoNotContain("shiftstack-prune=keep"), CreatedBefore[Resource](now.Add(-bestBefore))) {
+	for staleResource := range Filter(resources, TagsDoNotContain("shiftstack-prune=keep"), CreatedBefore[Resource](now.Add(-bestBefore)), IsNotIgnored(ignoredResources)) {
 		report.AddFound(staleResource)
 
 		if !dryRun {
