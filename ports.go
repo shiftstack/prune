@@ -54,6 +54,12 @@ func ListPorts(client *gophercloud.ServiceClient) <-chan Resource {
 		if err := ports.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
 			resources, err := ports.ExtractPorts(page)
 			for i := range resources {
+				// These ports can't be deleted by the port API, they'll be deleted by the router API.
+				if strings.Contains(resources[i].DeviceOwner, "network:router") {
+					continue
+				}
+				// These ports are created by the OVN metadata and can't be deleted by the port API
+				// and are deleted when the network is deleted.
 				if strings.Contains(resources[i].DeviceID, "ovnmeta") {
 					continue
 				}

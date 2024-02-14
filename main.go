@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/term"
 	"log"
 	"os"
 	"strings"
 	"time"
+
+	"golang.org/x/term"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/utils/openstack/clientconfig"
@@ -178,15 +179,15 @@ func main() {
 				resources <- res
 			}
 
-			for res := range Filter(ListRouters(networkClient), NameIsNot[Resource]("dualstack")) {
-				resources <- res
-			}
-
 			for res := range ListTrunks(networkClient) {
 				resources <- res
 			}
 
 			for res := range ListPorts(networkClient) {
+				resources <- res
+			}
+
+			for res := range Filter(ListRouters(networkClient), NameIsNot[Resource]("dualstack")) {
 				resources <- res
 			}
 
