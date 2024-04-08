@@ -74,7 +74,7 @@ func ListRouters(client *gophercloud.ServiceClient) <-chan Resource {
 			}
 
 			for i := range routerPage.Routers {
-				if err := ports.List(client, ports.ListOpts{DeviceID: routerPage.Routers[i].ID}).EachPage(func(page pagination.Page) (bool, error) {
+				if err := ports.List(client, ports.ListOpts{DeviceID: routerPage.Routers[i].ID, DeviceOwner: "network:router_interface"}).EachPage(func(page pagination.Page) (bool, error) {
 					portList, err := ports.ExtractPorts(page)
 					if err != nil {
 						return false, err
