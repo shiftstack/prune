@@ -54,7 +54,7 @@ func ListPorts(client *gophercloud.ServiceClient) <-chan Resource {
 		if err := ports.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
 			resources, err := ports.ExtractPorts(page)
 			for i := range resources {
-				if strings.Contains(resources[i].DeviceID, "ovnmeta") {
+				if isOpenStackManaged(resources[i]) {
 					continue
 				}
 				ch <- Port{
@@ -68,4 +68,14 @@ func ListPorts(client *gophercloud.ServiceClient) <-chan Resource {
 		}
 	}()
 	return ch
+}
+
+func isOpenStackManaged(port ports.Port) bool {
+	deviceOwnerPrefixes := []string{"network:", "neutron:"}
+	for _, prefix := range deviceOwnerPrefixes {
+		if strings.Contains(port.DeviceOwner, prefix) {
+			return true
+		}
+	}
+	return strings.Contains(port.DeviceID, "ovnmeta")
 }
