@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/routers"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/layer3/routers"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type Router struct {
@@ -19,13 +20,13 @@ func (s Router) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 
-func (s Router) Delete() error {
+func (s Router) Delete(ctx context.Context) error {
 	for _, subnet := range s.resource.subnets {
-		if _, err := routers.RemoveInterface(s.client, s.resource.ID, routers.RemoveInterfaceOpts{SubnetID: subnet}).Extract(); err != nil {
+		if _, err := routers.RemoveInterface(ctx, s.client, s.resource.ID, routers.RemoveInterfaceOpts{SubnetID: subnet}).Extract(); err != nil {
 			return err
 		}
 	}
-	return routers.Delete(s.client, s.resource.ID).ExtractErr()
+	return routers.Delete(ctx, s.client, s.resource.ID).ExtractErr()
 }
 
 func (s Router) Type() string {
@@ -59,11 +60,11 @@ type RouterParser struct {
 	subnets   []string
 }
 
-func ListRouters(client *gophercloud.ServiceClient) <-chan Resource {
+func ListRouters(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
-		if err := routers.List(client, routers.ListOpts{}).EachPage(func(page pagination.Page) (bool, error) {
+		if err := routers.List(client, routers.ListOpts{}).EachPage(ctx, func(ctx context.Context, page pagination.Page) (bool, error) {
 			var routerPage struct {
 				Routers []RouterParser `json:"routers"`
 			}
@@ -74,7 +75,7 @@ func ListRouters(client *gophercloud.ServiceClient) <-chan Resource {
 			}
 
 			for i := range routerPage.Routers {
-				if err := ports.List(client, ports.ListOpts{DeviceID: routerPage.Routers[i].ID, DeviceOwner: "network:router_interface"}).EachPage(func(page pagination.Page) (bool, error) {
+				if err := ports.List(client, ports.ListOpts{DeviceID: routerPage.Routers[i].ID, DeviceOwner: "network:router_interface"}).EachPage(ctx, func(_ context.Context, page pagination.Page) (bool, error) {
 					portList, err := ports.ExtractPorts(page)
 					if err != nil {
 						return false, err

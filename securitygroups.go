@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/groups"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type SecurityGroup struct {
@@ -18,8 +19,8 @@ func (s SecurityGroup) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 
-func (s SecurityGroup) Delete() error {
-	return groups.Delete(s.client, s.resource.ID).ExtractErr()
+func (s SecurityGroup) Delete(ctx context.Context) error {
+	return groups.Delete(ctx, s.client, s.resource.ID).ExtractErr()
 }
 
 func (s SecurityGroup) Type() string {
@@ -47,13 +48,13 @@ func (s SecurityGroup) ClusterID() string {
 	return ""
 }
 
-func ListSecurityGroups(client *gophercloud.ServiceClient) <-chan Resource {
+func ListSecurityGroups(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
 		if err := groups.List(client, groups.ListOpts{
 			TenantID: "",
-		}).EachPage(func(page pagination.Page) (bool, error) {
+		}).EachPage(ctx, func(_ context.Context, page pagination.Page) (bool, error) {
 			resources, err := groups.ExtractGroups(page)
 			for i := range resources {
 				ch <- SecurityGroup{

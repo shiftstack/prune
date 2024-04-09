@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/layer3/floatingips"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type FloatingIP struct {
@@ -18,8 +19,8 @@ func (s FloatingIP) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 
-func (s FloatingIP) Delete() error {
-	return floatingips.Delete(s.client, s.resource.ID).ExtractErr()
+func (s FloatingIP) Delete(ctx context.Context) error {
+	return floatingips.Delete(ctx, s.client, s.resource.ID).ExtractErr()
 }
 
 func (s FloatingIP) Type() string {
@@ -51,11 +52,11 @@ func (s FloatingIP) ClusterID() string {
 	return ""
 }
 
-func ListFloatingIPs(client *gophercloud.ServiceClient) <-chan Resource {
+func ListFloatingIPs(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
-		if err := floatingips.List(client, floatingips.ListOpts{}).EachPage(func(page pagination.Page) (bool, error) {
+		if err := floatingips.List(client, floatingips.ListOpts{}).EachPage(ctx, func(_ context.Context, page pagination.Page) (bool, error) {
 			floatingIPPage, err := floatingips.ExtractFloatingIPs(page)
 
 			for i := range floatingIPPage {

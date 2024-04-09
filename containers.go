@@ -1,15 +1,16 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
-	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/containers"
+	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/objects"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type Container struct {
@@ -26,34 +27,31 @@ func (s Container) CreatedAt() time.Time {
 	return time.Time{}
 }
 
-func (s Container) Delete() error {
-	pager := objects.List(s.client, s.ID(), &objects.ListOpts{
-		Full:  false,
-		Limit: 50,
-	})
-	err := pager.EachPage(func(page pagination.Page) (bool, error) {
-		objectsOnPage, err := objects.ExtractNames(page)
-		if err != nil {
-			return false, err
-		}
-		resp, err := objects.BulkDelete(s.client, s.ID(), objectsOnPage).Extract()
-		if err != nil {
-			return false, err
-		}
-		if len(resp.Errors) > 0 {
-			// Convert resp.Errors to golang errors.
-			// Each error is represented by a list of 2 strings, where the first one
-			// is the object name, and the second one contains an error message.
-			errs := make([]error, len(resp.Errors))
-			for i, objectError := range resp.Errors {
-				errs[i] = fmt.Errorf("cannot delete object %s: %s", objectError[0], objectError[1])
+func (s Container) Delete(ctx context.Context) error {
+	err := objects.List(s.client, s.ID(), &objects.ListOpts{Limit: 50}).
+		EachPage(ctx, func(ctx context.Context, page pagination.Page) (bool, error) {
+			objectsOnPage, err := objects.ExtractNames(page)
+			if err != nil {
+				return false, err
+			}
+			resp, err := objects.BulkDelete(ctx, s.client, s.ID(), objectsOnPage).Extract()
+			if err != nil {
+				return false, err
+			}
+			if len(resp.Errors) > 0 {
+				// Convert resp.Errors to golang errors.
+				// Each error is represented by a list of 2 strings, where the first one
+				// is the object name, and the second one contains an error message.
+				errs := make([]error, len(resp.Errors))
+				for i, objectError := range resp.Errors {
+					errs[i] = fmt.Errorf("cannot delete object %s: %s", objectError[0], objectError[1])
+				}
+
+				return false, fmt.Errorf("errors occurred during bulk deleting of container %s objects: %v", s.ID(), errs)
 			}
 
-			return false, fmt.Errorf("errors occurred during bulk deleting of container %s objects: %v", s.ID(), errs)
-		}
-
-		return true, nil
-	})
+			return true, nil
+		})
 	if err != nil {
 		var gerr gophercloud.ErrDefault404
 		if !errors.As(err, &gerr) {
@@ -62,7 +60,7 @@ func (s Container) Delete() error {
 		}
 	}
 	log.Printf("Deleting container %q", s.ID())
-	_, err = containers.Delete(s.client, s.ID()).Extract()
+	_, err = containers.Delete(ctx, s.client, s.ID()).Extract()
 	if err != nil {
 		// Ignore the error if the container cannot be found and return with an appropriate message if it's another type of error
 		var gerr gophercloud.ErrDefault404
@@ -97,7 +95,7 @@ type ContainerParser struct {
 	Properties map[string]string `json:"properties"`
 }
 
-func ListContainers(client *gophercloud.ServiceClient, networks <-chan Resource) <-chan Resource {
+func ListContainers(ctx context.Context, client *gophercloud.ServiceClient, networks <-chan Resource) <-chan Resource {
 	ch := make(chan Resource)
 	clusterNetworks := make(map[string]Resource)
 	for network := range networks {
@@ -107,14 +105,14 @@ func ListContainers(client *gophercloud.ServiceClient, networks <-chan Resource)
 	}
 	go func() {
 		defer close(ch)
-		if err := containers.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
+		if err := containers.List(client, nil).EachPage(ctx, func(ctx context.Context, page pagination.Page) (bool, error) {
 			containerPage, err := containers.ExtractNames(page)
 			if err != nil {
 				return true, err
 			}
 
 			for _, containerName := range containerPage {
-				getResult := containers.Get(client, containerName, nil)
+				getResult := containers.Get(ctx, client, containerName, nil)
 				if getResult.Err != nil {
 					return true, err
 				}

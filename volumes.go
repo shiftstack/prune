@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/attachments"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/attachments"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type Volume struct {
@@ -18,17 +19,17 @@ func (s Volume) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 
-func (s Volume) Delete() error {
+func (s Volume) Delete(ctx context.Context) error {
 	if s.resource.Attachments != nil {
 		s.client.Microversion = "3.44"
 		for _, attachment := range s.resource.Attachments {
-			err := attachments.Delete(s.client, attachment.AttachmentID).ExtractErr()
+			err := attachments.Delete(ctx, s.client, attachment.AttachmentID).ExtractErr()
 			if err != nil {
 				return err
 			}
 		}
 	}
-	return volumes.Delete(s.client, s.resource.ID, volumes.DeleteOpts{Cascade: true}).ExtractErr()
+	return volumes.Delete(ctx, s.client, s.resource.ID, volumes.DeleteOpts{Cascade: true}).ExtractErr()
 }
 
 func (s Volume) Type() string {
@@ -47,11 +48,11 @@ func (s Volume) ClusterID() string {
 	return s.resource.Metadata["cinder.csi.openstack.org/cluster"]
 }
 
-func ListVolumes(client *gophercloud.ServiceClient) <-chan Resource {
+func ListVolumes(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
-		if err := volumes.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
+		if err := volumes.List(client, nil).EachPage(ctx, func(_ context.Context, page pagination.Page) (bool, error) {
 			resources, err := volumes.ExtractVolumes(page)
 			for i := range resources {
 				ch <- &Volume{

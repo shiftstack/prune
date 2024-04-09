@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type Port struct {
@@ -18,8 +19,8 @@ func (s Port) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 
-func (s Port) Delete() error {
-	return ports.Delete(s.client, s.resource.ID).ExtractErr()
+func (s Port) Delete(ctx context.Context) error {
+	return ports.Delete(ctx, s.client, s.resource.ID).ExtractErr()
 }
 
 func (s Port) Type() string {
@@ -47,11 +48,11 @@ func (s Port) ClusterID() string {
 	return ""
 }
 
-func ListPorts(client *gophercloud.ServiceClient) <-chan Resource {
+func ListPorts(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
-		if err := ports.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
+		if err := ports.List(client, nil).EachPage(ctx, func(_ context.Context, page pagination.Page) (bool, error) {
 			resources, err := ports.ExtractPorts(page)
 			for i := range resources {
 				if strings.Contains(resources[i].DeviceID, "ovnmeta") {
