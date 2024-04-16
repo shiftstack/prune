@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/trunks"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/trunks"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type Trunk struct {
@@ -18,8 +19,8 @@ func (s Trunk) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 
-func (s Trunk) Delete() error {
-	return trunks.Delete(s.client, s.resource.ID).ExtractErr()
+func (s Trunk) Delete(ctx context.Context) error {
+	return trunks.Delete(ctx, s.client, s.resource.ID).ExtractErr()
 }
 
 func (s Trunk) Type() string {
@@ -47,11 +48,11 @@ func (s Trunk) ClusterID() string {
 	return ""
 }
 
-func ListTrunks(client *gophercloud.ServiceClient) <-chan Resource {
+func ListTrunks(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
-		if err := trunks.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
+		if err := trunks.List(client, nil).EachPage(ctx, func(_ context.Context, page pagination.Page) (bool, error) {
 			resources, err := trunks.ExtractTrunks(page)
 			for i := range resources {
 				ch <- Trunk{

@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/keypairs"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type KeyPair struct {
@@ -18,8 +19,8 @@ func (s KeyPair) CreatedAt() time.Time {
 	return s.resource.UpdatedAt
 }
 
-func (s KeyPair) Delete() error {
-	return keypairs.Delete(s.client, s.ID(), keypairs.DeleteOpts{}).ExtractErr()
+func (s KeyPair) Delete(ctx context.Context) error {
+	return keypairs.Delete(ctx, s.client, s.ID(), keypairs.DeleteOpts{}).ExtractErr()
 }
 
 func (s KeyPair) Type() string {
@@ -39,11 +40,11 @@ type KeyPairParser struct {
 	UpdatedAt time.Time `json:"created_at"`
 }
 
-func ListKeyPairs(client *gophercloud.ServiceClient) <-chan Resource {
+func ListKeyPairs(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
-		if err := keypairs.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
+		if err := keypairs.List(client, nil).EachPage(ctx, func(ctx context.Context, page pagination.Page) (bool, error) {
 			keypairPage, err := keypairs.ExtractKeyPairs(page)
 			if err != nil {
 				return true, err
@@ -52,7 +53,7 @@ func ListKeyPairs(client *gophercloud.ServiceClient) <-chan Resource {
 				var k struct {
 					KeyPairParser `json:"keypair"`
 				}
-				if err := keypairs.Get(client, keypairPage[i].Name, nil).ExtractInto(&k); err != nil {
+				if err := keypairs.Get(ctx, client, keypairPage[i].Name, nil).ExtractInto(&k); err != nil {
 					return true, err
 				}
 				log.Println(k)

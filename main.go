@@ -1,17 +1,21 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/term"
 	"log"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/utils/openstack/clientconfig"
+	"golang.org/x/term"
+
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack"
+	"github.com/gophercloud/gophercloud/v2/openstack/config"
+	"github.com/gophercloud/gophercloud/v2/openstack/config/clouds"
 )
 
 const helpString = `Prune stale resources from cloud
@@ -78,7 +82,7 @@ type Resource interface {
 
 type Typer interface{ Type() string }
 type Dater interface{ CreatedAt() time.Time }
-type Deleter interface{ Delete() error }
+type Deleter interface{ Delete(context.Context) error }
 type Identifier interface{ ID() string }
 type Namer interface{ Name() string }
 type Clusterer interface{ ClusterID() string }
@@ -87,6 +91,7 @@ type Tagger interface{ Tags() []string }
 // TODO:  server groups, keypairs
 // TODO: volume admin setting
 func main() {
+	ctx := context.Background()
 	if showHelp {
 		fmt.Printf(helpString)
 		os.Exit(0)
@@ -101,8 +106,16 @@ func main() {
 	}
 	resources := make(chan Resource)
 	{
-		opts := clientconfig.ClientOpts{Cloud: os.Getenv("OS_CLOUD")}
-		loadbalancerClient, err := clientconfig.NewServiceClient("load-balancer", &opts)
+		ao, eo, tlsConfig, err := clouds.Parse()
+		if err != nil {
+			panic(err)
+		}
+		providerClient, err := config.NewProviderClient(ctx, ao, config.WithTLSConfig(tlsConfig))
+		if err != nil {
+			panic(err)
+		}
+
+		loadbalancerClient, err := openstack.NewLoadBalancerV2(providerClient, eo)
 		if err != nil {
 			// Ignore the error if Octavia is not available in the cloud
 			var gerr *gophercloud.ErrEndpointNotFound
@@ -113,31 +126,31 @@ func main() {
 			}
 			loadbalancerClient = nil
 		}
-		computeClient, err := clientconfig.NewServiceClient("compute", &opts)
+		computeClient, err := openstack.NewComputeV2(providerClient, eo)
 		if err != nil {
 			panic(err)
 		} else {
 			// Required for server tags
 			computeClient.Microversion = "2.26"
 		}
-		networkClient, err := clientconfig.NewServiceClient("network", &opts)
+		networkClient, err := openstack.NewNetworkV2(providerClient, eo)
 		if err != nil {
 			panic(err)
 		}
-		volumeClient, err := clientconfig.NewServiceClient("volume", &opts)
+		volumeClient, err := openstack.NewBlockStorageV3(providerClient, eo)
 		if err != nil {
 			panic(err)
 		}
-		identityClient, err := clientconfig.NewServiceClient("identity", &opts)
+		identityClient, err := openstack.NewIdentityV3(providerClient, eo)
 		if err != nil {
 			panic(err)
 		}
-		imageClient, err := clientconfig.NewServiceClient("image", &opts)
+		imageClient, err := openstack.NewImageV2(providerClient, eo)
 		if err != nil {
 			panic(err)
 		}
 
-		containerClient, err := clientconfig.NewServiceClient("object-store", &opts)
+		containerClient, err := openstack.NewContainerV1(providerClient, eo)
 		if err != nil {
 			// Ignore the error if Swift is not available in the cloud
 			var gerr *gophercloud.ErrEndpointNotFound
@@ -149,7 +162,7 @@ func main() {
 			containerClient = nil
 		}
 
-		shareClient, err := clientconfig.NewServiceClient("sharev2", &opts)
+		shareClient, err := openstack.NewSharedFileSystemV2(providerClient, eo)
 		if err != nil {
 			// Ignore the error if Manila is not available in the cloud
 			var gerr *gophercloud.ErrEndpointNotFound
@@ -164,65 +177,65 @@ func main() {
 		go func() {
 			defer close(resources)
 
-			for res := range ListFloatingIPs(networkClient) {
+			for res := range ListFloatingIPs(ctx, networkClient) {
 				resources <- res
 			}
 
 			if loadbalancerClient != nil {
-				for res := range ListLoadBalancers(loadbalancerClient) {
+				for res := range ListLoadBalancers(ctx, loadbalancerClient) {
 					resources <- res
 				}
 			}
 
-			for res := range Filter(ListServers(computeClient), NameIsNot[Resource]("metrics")) {
+			for res := range Filter(ListServers(ctx, computeClient), NameIsNot[Resource]("metrics")) {
 				resources <- res
 			}
 
-			for res := range Filter(ListRouters(networkClient), NameIsNot[Resource]("dualstack")) {
+			for res := range Filter(ListRouters(ctx, networkClient), NameIsNot[Resource]("dualstack")) {
 				resources <- res
 			}
 
-			for res := range ListTrunks(networkClient) {
+			for res := range ListTrunks(ctx, networkClient) {
 				resources <- res
 			}
 
-			for res := range ListPorts(networkClient) {
+			for res := range ListPorts(ctx, networkClient) {
 				resources <- res
 			}
 
-			for res := range Filter(ListNetworks(networkClient), NameDoesNotContain[Resource]("hostonly", "external", "sahara-access", "mellanox", "intel", "public", "provider")) {
+			for res := range Filter(ListNetworks(ctx, networkClient), NameDoesNotContain[Resource]("hostonly", "external", "sahara-access", "mellanox", "intel", "public", "provider")) {
 				resources <- res
 			}
 
-			for res := range ListVolumeSnapshots(volumeClient) {
+			for res := range ListVolumeSnapshots(ctx, volumeClient) {
 				resources <- res
 			}
 
-			for res := range ListVolumes(volumeClient) {
+			for res := range ListVolumes(ctx, volumeClient) {
 				resources <- res
 			}
 
-			for res := range Filter(ListSecurityGroups(networkClient), NameIsNot[Resource]("default", "ssh", "allow_ssh", "allow_ping")) {
+			for res := range Filter(ListSecurityGroups(ctx, networkClient), NameIsNot[Resource]("default", "ssh", "allow_ssh", "allow_ping")) {
 				resources <- res
 			}
 
 			if shareClient != nil {
-				for res := range ListShares(shareClient) {
+				for res := range ListShares(ctx, shareClient) {
 					resources <- res
 				}
 			}
 
-			for res := range ListPerishableApplicationCredentials(identityClient) {
+			for res := range ListPerishableApplicationCredentials(ctx, identityClient) {
 				resources <- res
 			}
 
 			if containerClient != nil {
-				for res := range Filter(ListContainers(containerClient, ListNetworks(networkClient)), NameIsNot[Resource]("shiftstack-metrics", "shiftstack-bot")) {
+				for res := range Filter(ListContainers(ctx, containerClient, ListNetworks(ctx, networkClient)), NameIsNot[Resource]("shiftstack-metrics", "shiftstack-bot")) {
 					resources <- res
 				}
 			}
 
-			for res := range Filter(ListImages(imageClient), NameMatchesOneOfThesePatterns[Resource](".{8}-.{5}-.{5}-ignition", ".{8}-.{5}-.{5}-rhcos", "bootstrap-ign-.{8}-.{5}-.{5}", "rhcos-.{7,8}-.{5}")) {
+			for res := range Filter(ListImages(ctx, imageClient), NameMatchesOneOfThesePatterns[Resource](".{8}-.{5}-.{5}-ignition", ".{8}-.{5}-.{5}-rhcos", "bootstrap-ign-.{8}-.{5}-.{5}", "rhcos-.{7,8}-.{5}")) {
 				resources <- res
 			}
 		}()
@@ -235,7 +248,7 @@ func main() {
 
 		if !dryRun {
 			log.Printf("Deleting %s %q (created at %s)...\n", staleResource.Type(), staleResource.ID(), staleResource.CreatedAt().Format(time.RFC3339))
-			if err := staleResource.Delete(); err != nil {
+			if err := staleResource.Delete(ctx); err != nil {
 				log.Printf("error deleting %s %q: %v\n", staleResource.Type(), staleResource.ID(), err)
 				report.AddFailedToDelete(staleResource)
 			} else {

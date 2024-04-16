@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/networks"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type Network struct {
@@ -18,8 +19,8 @@ func (s Network) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 
-func (s Network) Delete() error {
-	return networks.Delete(s.client, s.resource.ID).ExtractErr()
+func (s Network) Delete(ctx context.Context) error {
+	return networks.Delete(ctx, s.client, s.resource.ID).ExtractErr()
 }
 
 func (s Network) Type() string {
@@ -47,11 +48,11 @@ func (s Network) ClusterID() string {
 	return ""
 }
 
-func ListNetworks(client *gophercloud.ServiceClient) <-chan Resource {
+func ListNetworks(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
-		if err := networks.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
+		if err := networks.List(client, nil).EachPage(ctx, func(_ context.Context, page pagination.Page) (bool, error) {
 			resources, err := networks.ExtractNetworks(page)
 			for i := range resources {
 				ch <- Network{

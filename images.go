@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/images"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type Image struct {
@@ -18,8 +19,8 @@ func (s Image) CreatedAt() time.Time {
 	return s.resource.CreatedAt
 }
 
-func (s Image) Delete() error {
-	return images.Delete(s.client, s.resource.ID).ExtractErr()
+func (s Image) Delete(ctx context.Context) error {
+	return images.Delete(ctx, s.client, s.resource.ID).ExtractErr()
 }
 
 func (s Image) Type() string {
@@ -48,11 +49,11 @@ func (s Image) ClusterID() string {
 	return ""
 }
 
-func ListImages(client *gophercloud.ServiceClient) <-chan Resource {
+func ListImages(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
-		if err := images.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
+		if err := images.List(client, nil).EachPage(ctx, func(_ context.Context, page pagination.Page) (bool, error) {
 			resources, err := images.ExtractImages(page)
 			for i := range resources {
 				ch <- Image{

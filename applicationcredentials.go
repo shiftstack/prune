@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/applicationcredentials"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
-	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/applicationcredentials"
+	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/tokens"
+	"github.com/gophercloud/gophercloud/v2/pagination"
 )
 
 type ApplicationCredential struct {
@@ -20,8 +21,8 @@ func (s ApplicationCredential) CreatedAt() time.Time {
 	return s.resource.ExpiresAt
 }
 
-func (s ApplicationCredential) Delete() error {
-	return applicationcredentials.Delete(s.client, s.userID, s.resource.ID).ExtractErr()
+func (s ApplicationCredential) Delete(ctx context.Context) error {
+	return applicationcredentials.Delete(ctx, s.client, s.userID, s.resource.ID).ExtractErr()
 }
 
 func (s ApplicationCredential) Type() string {
@@ -46,25 +47,25 @@ func (s ApplicationCredential) ClusterID() string {
 	return ""
 }
 
-func getUserID(client *gophercloud.ServiceClient) (string, error) {
+func getUserID(ctx context.Context, client *gophercloud.ServiceClient) (string, error) {
 	var token struct {
 		User struct {
 			ID string `json:"id"`
 		} `json:"user"`
 	}
-	err := tokens.Get(client, client.Token()).ExtractInto(&token)
+	err := tokens.Get(ctx, client, client.Token()).ExtractInto(&token)
 	return token.User.ID, err
 }
 
-func ListPerishableApplicationCredentials(client *gophercloud.ServiceClient) <-chan Resource {
-	userID, err := getUserID(client)
+func ListPerishableApplicationCredentials(ctx context.Context, client *gophercloud.ServiceClient) <-chan Resource {
+	userID, err := getUserID(ctx, client)
 	if err != nil {
 		panic(err)
 	}
 	ch := make(chan Resource)
 	go func() {
 		defer close(ch)
-		if err := applicationcredentials.List(client, userID, nil).EachPage(func(page pagination.Page) (bool, error) {
+		if err := applicationcredentials.List(client, userID, nil).EachPage(ctx, func(_ context.Context, page pagination.Page) (bool, error) {
 			resources, err := applicationcredentials.ExtractApplicationCredentials(page)
 			for i := range resources {
 				if !resources[i].ExpiresAt.IsZero() {
