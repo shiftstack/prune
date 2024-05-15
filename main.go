@@ -203,7 +203,7 @@ func main() {
 				resources <- res
 			}
 
-			for res := range Filter(ListNetworks(ctx, networkClient), NameDoesNotContain[Resource]("hostonly", "external", "sahara-access", "mellanox", "intel", "public", "provider")) {
+			for res := range Filter(ListNetworks(ctx, networkClient), NameDoesNotContain[Resource]("lb-mgmt-net", "octavia-provider-net", "hostonly", "external", "sahara-access", "mellanox", "intel", "public", "provider")) {
 				resources <- res
 			}
 
