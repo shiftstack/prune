@@ -23,7 +23,7 @@ func (s Share) Delete(ctx context.Context) error {
 	if err := deleteShareSnapshots(ctx, s.client, s.ID()); err != nil {
 		return err
 	}
-	return shares.Delete(ctx, s.client, s.resource.ID).ExtractErr()
+	return shares.ForceDelete(ctx, s.client, s.resource.ID).ExtractErr()
 }
 
 func (s Share) Type() string {
