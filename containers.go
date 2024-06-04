@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gophercloud/gophercloud/v2"
@@ -28,50 +28,44 @@ func (s Container) CreatedAt() time.Time {
 }
 
 func (s Container) Delete(ctx context.Context) error {
-	err := objects.List(s.client, s.ID(), &objects.ListOpts{Limit: 50}).
-		EachPage(ctx, func(ctx context.Context, page pagination.Page) (bool, error) {
-			objectsOnPage, err := objects.ExtractNames(page)
-			if err != nil {
-				return false, err
-			}
-			resp, err := objects.BulkDelete(ctx, s.client, s.ID(), objectsOnPage).Extract()
-			if err != nil {
-				return false, err
-			}
-			if len(resp.Errors) > 0 {
-				// Convert resp.Errors to golang errors.
-				// Each error is represented by a list of 2 strings, where the first one
-				// is the object name, and the second one contains an error message.
-				errs := make([]error, len(resp.Errors))
-				for i, objectError := range resp.Errors {
-					errs[i] = fmt.Errorf("cannot delete object %s: %s", objectError[0], objectError[1])
-				}
-
-				return false, fmt.Errorf("errors occurred during bulk deleting of container %s objects: %v", s.ID(), errs)
-			}
-
-			return true, nil
-		})
-	if err != nil {
-		var gerr gophercloud.ErrDefault404
-		if !errors.As(err, &gerr) {
-			log.Printf("Bulk deleting of container %q objects failed: %v", s.ID(), err)
-			return err
+	if err := objects.List(s.client, s.ID(), &objects.ListOpts{Limit: 50}).EachPage(ctx, func(ctx context.Context, page pagination.Page) (bool, error) {
+		objectsOnPage, err := objects.ExtractNames(page)
+		if err != nil {
+			return false, err
 		}
+		resp, err := objects.BulkDelete(ctx, s.client, s.ID(), objectsOnPage).Extract()
+		if err != nil {
+			return false, err
+		}
+		if len(resp.Errors) > 0 {
+			// Convert resp.Errors to golang errors.
+			// Each error is represented by a list of 2 strings, where the first one
+			// is the object name, and the second one contains an error message.
+			errs := make([]error, len(resp.Errors))
+			for i, objectError := range resp.Errors {
+				errs[i] = fmt.Errorf("cannot delete object %s: %s", objectError[0], objectError[1])
+			}
+
+			return false, fmt.Errorf("errors occurred during bulk deleting of container %s objects: %v", s.ID(), errs)
+		}
+
+		return true, nil
+	}); !gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
+		log.Printf("Bulk deleting of container %q objects failed: %v", s.ID(), err)
+		return err
 	}
 	log.Printf("Deleting container %q", s.ID())
-	_, err = containers.Delete(ctx, s.client, s.ID()).Extract()
-	if err != nil {
+	if _, err := containers.Delete(ctx, s.client, s.ID()).Extract(); err != nil {
 		// Ignore the error if the container cannot be found and return with an appropriate message if it's another type of error
-		var gerr gophercloud.ErrDefault404
-		if !errors.As(err, &gerr) {
+		if gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
+			log.Printf("Cannot find container %q. It's probably already been deleted.", s.ID())
+		} else {
 			log.Printf("Deleting container %q failed: %v", s.ID(), err)
-			return err
 		}
-		log.Printf("Cannot find container %q. It's probably already been deleted.", s.ID())
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func (s Container) Type() string {
@@ -128,8 +122,7 @@ func ListContainers(ctx context.Context, client *gophercloud.ServiceClient, netw
 			}
 			return true, nil
 		}); err != nil {
-			var errForbidden gophercloud.ErrDefault403
-			if errors.As(err, &errForbidden) {
+			if gophercloud.ResponseCodeIs(err, http.StatusForbidden) {
 				log.Printf("Skipping containers deletion. User not authorized to perform the requested action")
 			} else {
 				panic(err)
