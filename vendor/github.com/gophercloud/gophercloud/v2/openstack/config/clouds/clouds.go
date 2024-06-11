@@ -22,7 +22,6 @@ package clouds
 import (
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -90,27 +89,22 @@ func Parse(opts ...ParseOption) (gophercloud.AuthOptions, gophercloud.EndpointOp
 		}
 
 		for _, cloudsPath := range options.locations {
-			var errNotFound *os.PathError
 			f, err := os.Open(cloudsPath)
-			if err != nil && !errors.As(err, &errNotFound) {
-				return gophercloud.AuthOptions{}, gophercloud.EndpointOpts{}, nil, fmt.Errorf("failed to open %q: %w", cloudsPath, err)
+			if err != nil {
+				continue
 			}
-			if err == nil {
-				defer f.Close()
-				options.cloudsyamlReader = f
+			defer f.Close()
+			options.cloudsyamlReader = f
 
-				if options.secureyamlReader == nil {
-					securePath := path.Join(path.Base(cloudsPath), "secure.yaml")
-					secureF, err := os.Open(securePath)
-					if err != nil && !errors.As(err, &errNotFound) {
-						return gophercloud.AuthOptions{}, gophercloud.EndpointOpts{}, nil, fmt.Errorf("failed to open %q: %w", securePath, err)
-					}
-					if err == nil {
-						defer secureF.Close()
-						options.secureyamlReader = secureF
-					}
+			if options.secureyamlReader == nil {
+				securePath := path.Join(path.Dir(cloudsPath), "secure.yaml")
+				secureF, err := os.Open(securePath)
+				if err == nil {
+					defer secureF.Close()
+					options.secureyamlReader = secureF
 				}
 			}
+			break
 		}
 		if options.cloudsyamlReader == nil {
 			return gophercloud.AuthOptions{}, gophercloud.EndpointOpts{}, nil, fmt.Errorf("clouds file not found. Search locations were: %v", options.locations)
@@ -210,12 +204,12 @@ func mergeClouds(override, cloud Cloud) (Cloud, error) {
 	if err != nil {
 		return Cloud{}, err
 	}
-	var overrideInterface interface{}
+	var overrideInterface any
 	err = json.Unmarshal(overrideJson, &overrideInterface)
 	if err != nil {
 		return Cloud{}, err
 	}
-	var cloudInterface interface{}
+	var cloudInterface any
 	err = json.Unmarshal(cloudJson, &cloudInterface)
 	if err != nil {
 		return Cloud{}, err
@@ -223,6 +217,9 @@ func mergeClouds(override, cloud Cloud) (Cloud, error) {
 	var mergedCloud Cloud
 	mergedInterface := mergeInterfaces(overrideInterface, cloudInterface)
 	mergedJson, err := json.Marshal(mergedInterface)
+	if err != nil {
+		return Cloud{}, err
+	}
 	err = json.Unmarshal(mergedJson, &mergedCloud)
 	if err != nil {
 		return Cloud{}, err
@@ -232,10 +229,10 @@ func mergeClouds(override, cloud Cloud) (Cloud, error) {
 
 // merges two interfaces. In cases where a value is defined for both 'overridingInterface' and
 // 'inferiorInterface' the value in 'overridingInterface' will take precedence.
-func mergeInterfaces(overridingInterface, inferiorInterface interface{}) interface{} {
+func mergeInterfaces(overridingInterface, inferiorInterface any) any {
 	switch overriding := overridingInterface.(type) {
-	case map[string]interface{}:
-		interfaceMap, ok := inferiorInterface.(map[string]interface{})
+	case map[string]any:
+		interfaceMap, ok := inferiorInterface.(map[string]any)
 		if !ok {
 			return overriding
 		}
@@ -246,8 +243,8 @@ func mergeInterfaces(overridingInterface, inferiorInterface interface{}) interfa
 				overriding[k] = v
 			}
 		}
-	case []interface{}:
-		list, ok := inferiorInterface.([]interface{})
+	case []any:
+		list, ok := inferiorInterface.([]any)
 		if !ok {
 			return overriding
 		}
@@ -255,7 +252,7 @@ func mergeInterfaces(overridingInterface, inferiorInterface interface{}) interfa
 		return append(overriding, list...)
 	case nil:
 		// mergeClouds(nil, map[string]interface{...}) -> map[string]interface{...}
-		v, ok := inferiorInterface.(map[string]interface{})
+		v, ok := inferiorInterface.(map[string]any)
 		if ok {
 			return v
 		}

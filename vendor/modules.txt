@@ -1,5 +1,5 @@
-# github.com/gophercloud/gophercloud/v2 v2.0.0-beta.3
-## explicit; go 1.21.6
+# github.com/gophercloud/gophercloud/v2 v2.0.0-rc.3
+## explicit; go 1.22
 github.com/gophercloud/gophercloud/v2
 github.com/gophercloud/gophercloud/v2/openstack
 github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/attachments
@@ -36,13 +36,13 @@ github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/shares
 github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/snapshots
 github.com/gophercloud/gophercloud/v2/openstack/utils
 github.com/gophercloud/gophercloud/v2/pagination
-# golang.org/x/sys v0.19.0
+# golang.org/x/sys v0.21.0
 ## explicit; go 1.18
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-## explicit; go 1.17
+# golang.org/x/term v0.21.0
+## explicit; go 1.18
 golang.org/x/term
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
