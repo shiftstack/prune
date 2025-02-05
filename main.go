@@ -18,7 +18,8 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/config/clouds"
 )
 
-const helpString = `Prune stale resources from cloud
+const (
+	helpString = `Prune stale resources from cloud
 
 Usage: prune [OPTION]...
 
@@ -29,8 +30,14 @@ Options:
                         relevant Slack channel, otherwise they are dumped to
                         stdout
   --no-dry-run          Delete resources
+  --include=<types>     Comma-separated list of resource types to include
+  --exclude=<types>     Comma-separated list of resource types to exclude
   --help                Show this help message and exit
-`
+
+Available resource types: ` + resourceTypes
+
+	resourceTypes = `floatingips,loadbalancers,servers,routers,trunks,ports,networks,volumesnapshots,volumes,securitygroups,shares,appcreds,containers,images`
+)
 
 var showHelp = func() bool {
 	for _, arg := range os.Args {
@@ -72,6 +79,32 @@ var slackHook = func() string {
 	return ""
 }()
 
+var (
+	includeResources = func() []string {
+		for _, arg := range os.Args {
+			if value := strings.TrimPrefix(arg, "--include="); value != arg {
+				if value == "" {
+					return nil
+				}
+				return strings.Split(value, ",")
+			}
+		}
+		return nil
+	}()
+
+	excludeResources = func() []string {
+		for _, arg := range os.Args {
+			if value := strings.TrimPrefix(arg, "--exclude="); value != arg {
+				if value == "" {
+					return nil
+				}
+				return strings.Split(value, ",")
+			}
+		}
+		return nil
+	}()
+)
+
 type Resource interface {
 	Dater
 	Deleter
@@ -88,6 +121,70 @@ type Namer interface{ Name() string }
 type Clusterer interface{ ClusterID() string }
 type Tagger interface{ Tags() []string }
 
+func validateResourceTypes(include, exclude []string) error {
+	valid := strings.Split(resourceTypes, ",")
+	validMap := make(map[string]bool)
+	for _, v := range valid {
+		validMap[v] = true
+	}
+
+	checkTypes := func(types []string) error {
+		for _, t := range types {
+			if !validMap[t] {
+				return fmt.Errorf("invalid resource type %q, valid types are: %s", t, resourceTypes)
+			}
+		}
+		return nil
+	}
+
+	if err := checkTypes(include); err != nil {
+		return err
+	}
+	if err := checkTypes(exclude); err != nil {
+		return err
+	}
+
+	// Check for resources that are both included and excluded
+	if len(include) > 0 && len(exclude) > 0 {
+		includeMap := make(map[string]bool)
+		for _, t := range include {
+			includeMap[t] = true
+		}
+		for _, t := range exclude {
+			if includeMap[t] {
+				return fmt.Errorf("resource type %q cannot be both included and excluded", t)
+			}
+		}
+	}
+
+	return nil
+}
+
+func shouldProcessResource(resourceType string) bool {
+	// If no include/exclude specified, process all resources
+	if len(includeResources) == 0 && len(excludeResources) == 0 {
+		return true
+	}
+
+	// If include is specified, only process those resources
+	if len(includeResources) > 0 {
+		for _, t := range includeResources {
+			if t == resourceType {
+				return true
+			}
+		}
+		return false
+	}
+
+	// If exclude is specified, process everything except those resources
+	for _, t := range excludeResources {
+		if t == resourceType {
+			return false
+		}
+	}
+	return true
+}
+
 // TODO:  server groups, keypairs
 // TODO: volume admin setting
 func main() {
@@ -95,6 +192,10 @@ func main() {
 	if showHelp {
 		fmt.Printf(helpString)
 		os.Exit(0)
+	}
+
+	if err := validateResourceTypes(includeResources, excludeResources); err != nil {
+		log.Fatal(err)
 	}
 
 	{
@@ -177,66 +278,88 @@ func main() {
 		go func() {
 			defer close(resources)
 
-			for res := range ListFloatingIPs(ctx, networkClient) {
-				resources <- res
+			if shouldProcessResource("floatingips") {
+				for res := range ListFloatingIPs(ctx, networkClient) {
+					resources <- res
+				}
 			}
 
-			if loadbalancerClient != nil {
+			if loadbalancerClient != nil && shouldProcessResource("loadbalancers") {
 				for res := range ListLoadBalancers(ctx, loadbalancerClient) {
 					resources <- res
 				}
 			}
 
-			for res := range Filter(ListServers(ctx, computeClient), NameIsNot[Resource]("metrics")) {
-				resources <- res
+			if shouldProcessResource("servers") {
+				for res := range Filter(ListServers(ctx, computeClient), NameIsNot[Resource]("metrics")) {
+					resources <- res
+				}
 			}
 
-			for res := range Filter(ListRouters(ctx, networkClient), NameIsNot[Resource]("dualstack")) {
-				resources <- res
+			if shouldProcessResource("routers") {
+				for res := range Filter(ListRouters(ctx, networkClient), NameIsNot[Resource]("dualstack")) {
+					resources <- res
+				}
 			}
 
-			for res := range ListTrunks(ctx, networkClient) {
-				resources <- res
+			if shouldProcessResource("trunks") {
+				for res := range ListTrunks(ctx, networkClient) {
+					resources <- res
+				}
 			}
 
-			for res := range ListPorts(ctx, networkClient) {
-				resources <- res
+			if shouldProcessResource("ports") {
+				for res := range ListPorts(ctx, networkClient) {
+					resources <- res
+				}
 			}
 
-			for res := range Filter(ListNetworks(ctx, networkClient), NameDoesNotContain[Resource]("lb-mgmt-net", "octavia-provider-net", "hostonly", "external", "sahara-access", "mellanox", "intel", "public", "provider")) {
-				resources <- res
+			if shouldProcessResource("networks") {
+				for res := range Filter(ListNetworks(ctx, networkClient), NameDoesNotContain[Resource]("lb-mgmt-net", "octavia-provider-net", "hostonly", "external", "sahara-access", "mellanox", "intel", "public", "provider")) {
+					resources <- res
+				}
 			}
 
-			for res := range ListVolumeSnapshots(ctx, volumeClient) {
-				resources <- res
+			if shouldProcessResource("volumesnapshots") {
+				for res := range ListVolumeSnapshots(ctx, volumeClient) {
+					resources <- res
+				}
 			}
 
-			for res := range ListVolumes(ctx, volumeClient) {
-				resources <- res
+			if shouldProcessResource("volumes") {
+				for res := range ListVolumes(ctx, volumeClient) {
+					resources <- res
+				}
 			}
 
-			for res := range Filter(ListSecurityGroups(ctx, networkClient), NameIsNot[Resource]("default", "ssh", "allow_ssh", "allow_ping")) {
-				resources <- res
+			if shouldProcessResource("securitygroups") {
+				for res := range Filter(ListSecurityGroups(ctx, networkClient), NameIsNot[Resource]("default", "ssh", "allow_ssh", "allow_ping")) {
+					resources <- res
+				}
 			}
 
-			if shareClient != nil {
+			if shareClient != nil && shouldProcessResource("shares") {
 				for res := range ListShares(ctx, shareClient) {
 					resources <- res
 				}
 			}
 
-			for res := range ListPerishableApplicationCredentials(ctx, identityClient) {
-				resources <- res
+			if shouldProcessResource("appcreds") {
+				for res := range ListPerishableApplicationCredentials(ctx, identityClient) {
+					resources <- res
+				}
 			}
 
-			if containerClient != nil {
+			if containerClient != nil && shouldProcessResource("containers") {
 				for res := range Filter(ListContainers(ctx, containerClient, ListNetworks(ctx, networkClient)), NameIsNot[Resource]("shiftstack-metrics", "shiftstack-bot")) {
 					resources <- res
 				}
 			}
 
-			for res := range Filter(ListImages(ctx, imageClient), NameMatchesOneOfThesePatterns[Resource](".{8}-.{5}-.{5}-ignition", ".{8}-.{5}-.{5}-rhcos", "bootstrap-ign-.{8}-.{5}-.{5}", "rhcos-.{7,8}-.{5}")) {
-				resources <- res
+			if shouldProcessResource("images") {
+				for res := range Filter(ListImages(ctx, imageClient), NameMatchesOneOfThesePatterns[Resource](".{8}-.{5}-.{5}-ignition", ".{8}-.{5}-.{5}-rhcos", "bootstrap-ign-.{8}-.{5}-.{5}", "rhcos-.{7,8}-.{5}")) {
+					resources <- res
+				}
 			}
 		}()
 	}
