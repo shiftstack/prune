@@ -2,20 +2,16 @@
 
 aliases:
   openstack-approvers:
-    - dulek
     - EmilienM
+    - dkokkino
     - gryf
-    - MaysaMacedo
     - mandre
-    - mdbooth
     - pierreprinetti
     - stephenfin
   openstack-reviewers:
-    - dulek
     - EmilienM
+    - dkokkino
     - gryf
-    - MaysaMacedo
     - mandre
-    - mdbooth
     - pierreprinetti
     - stephenfin
