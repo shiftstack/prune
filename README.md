@@ -1,24 +1,27 @@
-# Prune stale OpenShift resources in OpenStack
+# prune
 
-List resources older than a threshold.
+Prunes stale OpenShift resources in OpenStack
 
-Ignores resources tagged with: `shiftstack-prune=keep`.
+List resources older than a threshold. Ignores resources tagged with: `shiftstack-prune=keep`.
 
-## Use
+## Usage
 
 Dry run:
+
 ```shell
 export OS_CLOUD=<clouds.yaml entry>
 ./prune
 ```
 
 Actual run:
+
 ```shell
 export OS_CLOUD=<clouds.yaml entry>
 ./prune --no-dry-run
 ```
 
-Configure the resoruce TTL with `--resource-ttl=<duration>` where `<duration>` is expressed as a Go duration. For example:
+Configure the resource TTL with `--resource-ttl=<duration>` where `<duration>` is expressed as a Go duration. For example:
+
 ```shell
 export OS_CLOUD=<clouds.yaml entry>
 ./prune --no-dry-run --resource-ttl=5h
@@ -37,10 +40,10 @@ Filter resources by type:
 
 Available resource types:
 
-| Resource type    | Service    | Description                        |
-|------------------|------------|------------------------------------|
-| `appcreds`       | `keystone` | Application credentials            |
-| `containers`     | `swift`    | Object storage containers          |
+| Resource type    | Service    | Description                       |
+|------------------|------------|-----------------------------------|
+| `appcreds`       | `keystone` | Application credentials           |
+| `containers`     | `swift`    | Object storage containers         |
 | `floatingips`    | `neutron`  | Public IP addresses               |
 | `images`         | `glance`   | Virtual machine images            |
 | `loadbalancers`  | `octavia`  | Load balancers                    |
