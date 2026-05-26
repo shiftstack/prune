@@ -37,6 +37,7 @@ Filter resources by type:
 
 # Process everything except images and networks
 ./bin/prune --exclude=images,networks
+```
 
 Available resource types:
 
