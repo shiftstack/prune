@@ -10,21 +10,21 @@ Dry run:
 
 ```shell
 export OS_CLOUD=<clouds.yaml entry>
-./prune
+./bin/prune
 ```
 
 Actual run:
 
 ```shell
 export OS_CLOUD=<clouds.yaml entry>
-./prune --no-dry-run
+./bin/prune --no-dry-run
 ```
 
 Configure the resource TTL with `--resource-ttl=<duration>` where `<duration>` is expressed as a Go duration. For example:
 
 ```shell
 export OS_CLOUD=<clouds.yaml entry>
-./prune --no-dry-run --resource-ttl=5h
+./bin/prune --no-dry-run --resource-ttl=5h
 ```
 
 ## Resource filtering
@@ -33,10 +33,10 @@ Filter resources by type:
 
 ```shell
 # Only process servers and volumes
-./prune --include=servers,volumes
+./bin/prune --include=servers,volumes
 
 # Process everything except images and networks
-./prune --exclude=images,networks
+./bin/prune --exclude=images,networks
 
 Available resource types:
 
